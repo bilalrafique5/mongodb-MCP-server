@@ -32,115 +32,82 @@ def parse_json(text):
 
 def build_prompt(user_input, tools):
     return f"""
-You are a PRODUCTION MCP TOOL ROUTER for MongoDB.
+You are a STRICT PRODUCTION MCP TOOL ROUTER.
 
-You MUST choose EXACTLY ONE tool from:
+You MUST follow these rules with ZERO deviation.
+
+--------------------------------------------------
+AVAILABLE TOOLS:
 {list(tools.keys())}
 
 --------------------------------------------------
-AVAILABLE TOOLS & SCHEMAS:
+STRICT OUTPUT FORMAT (VERY IMPORTANT):
 
-1. insert_user
-   Use for single user insert
-   args:
-   {{
-     "name": string,
-     "age": number
-   }}
-
-2. insert_users
-   Use for multiple user insert
-   args:
-   {{
-     "users": [
-       {{ "name": string, "age": number }}
-     ]
-   }}
-
-3. get_users
-   Use for fetching users with optional filters
-   args:
-   {{
-     "filter": {{
-        "name_starts_with": string (optional)
-     }}
-   }}
-
-4. delete_user
-   Use for deleting one user
-   args:
-   {{
-     "name": string
-   }}
-
-5. delete_users
-   Use for deleting multiple users
-   args:
-   {{
-     "names": [string]
-   }}
-
-6. update_user
-   Use for updating a single user
-   args:
-   {{
-     "name": string,
-     "update": {{
-        "name": string (optional),
-        "age": number (optional)
-     }}
-   }}
-
-7. update_users
-   Use for updating multiple users
-   args:
-   {{
-     "names": [string],
-     "update": {{
-        "name": string (optional),
-        "age": number (optional)
-     }}
-   }}
-
---------------------------------------------------
-RULES:
-
-- ALWAYS pick correct tool
-- NEVER return empty tool
-- NEVER invent new tool names
-- ALWAYS follow exact schema
-- ALWAYS return ONLY valid JSON
-- NO explanation, NO markdown
-
---------------------------------------------------
-INTELLIGENT MAPPING RULES:
-
-INSERT:
-- "add user" → insert_user
-- "add users" → insert_users
-
-DELETE:
-- "delete user" → delete_user
-- "delete users" → delete_users
-
-UPDATE:
-- "update user" → update_user
-- "update users" → update_users
-
-FILTERING:
-- "starting with a/b/c" → get_users with filter.name_starts_with
-
---------------------------------------------------
-OUTPUT FORMAT ONLY:
+You MUST return ONLY valid JSON:
 
 {{
-  "tool": "...",
+  "tool": "tool_name",
   "args": {{}}
 }}
+
+❌ DO NOT use:
+- data
+- result
+- response
+- explanation
+- markdown
+- ```json
+
+ONLY PURE JSON.
+
+--------------------------------------------------
+TOOLS SCHEMA:
+
+insert_user:
+{{ "name": string, "age": number }}
+
+insert_users:
+{{ "users": [{{ "name": string, "age": number }}] }}
+
+get_users:
+{{ 
+  "filter": {{
+    "name_starts_with": string,
+    "age_gt": number,
+    "age_lt": number,
+    "age_range": [min, max]
+  }}
+}}
+
+delete_user:
+{{ "name": string }}
+
+delete_users:
+{{ "names": [string] }}
+
+update_user:
+{{ "name": string, "update": {{...}} }}
+
+update_users:
+{{ "names": [string], "update": {{...}} }}
+
+--------------------------------------------------
+INTELLIGENCE RULES:
+
+- "add user" → insert_user
+- "add users" → insert_users
+- "delete users" → delete_users
+- "update users" → update_users
+- "age greater than X" → use get_users filter.age_gt
+- "between X and Y" → age_range
 
 --------------------------------------------------
 USER INPUT:
 {user_input}
+
+--------------------------------------------------
+REMEMBER:
+Return ONLY JSON with "tool" and "args".
 """
 
 
