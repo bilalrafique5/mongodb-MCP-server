@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 client = MongoClient(os.getenv("MONGO_URI"))
-db = client[os.getenv("DB_NAME")]
+db = client[os.getenv("DB_NAME", "mcp_prod")]
 
 def get_collection(name):
     return db[name]

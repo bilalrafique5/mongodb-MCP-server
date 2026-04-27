@@ -6,16 +6,10 @@ from client import ask_llm
 MCP_URL = "http://127.0.0.1:8000"
 
 
-# -----------------------------
-# Get tools
-# -----------------------------
 def get_tools():
     return requests.get(f"{MCP_URL}/tools").json()
 
 
-# -----------------------------
-# Run tool
-# -----------------------------
 def run_tool(tool, args):
     return requests.post(
         f"{MCP_URL}/run",
@@ -23,9 +17,6 @@ def run_tool(tool, args):
     ).json()
 
 
-# -----------------------------
-# Clean AI response
-# -----------------------------
 def clean_json(text):
     text = re.sub(r"```.*?```", "", text, flags=re.DOTALL).strip()
     match = re.search(r"\{.*\}", text, re.DOTALL)
@@ -39,32 +30,15 @@ def parse_json(text):
         return None
 
 
-# -----------------------------
-# Validate AI output
-# -----------------------------
-def validate_ai(data, tools):
-    if not data:
-        return None
-
-    if data.get("tool") not in tools:
-        print("❌ Invalid tool:", data.get("tool"))
-        return None
-
-    return data
-
-
-# -----------------------------
-# Prompt builder (STRONG)
-# -----------------------------
 def build_prompt(user_input, tools):
     return f"""
-You are a STRICT MCP TOOL ROUTER for MongoDB.
+You are a PRODUCTION MCP TOOL ROUTER for MongoDB.
 
 You MUST choose EXACTLY ONE tool from:
 {list(tools.keys())}
 
 --------------------------------------------------
-AVAILABLE TOOLS:
+AVAILABLE TOOLS & SCHEMAS:
 
 1. insert_user
    Use for single user insert
@@ -75,7 +49,7 @@ AVAILABLE TOOLS:
    }}
 
 2. insert_users
-   Use for multiple users insert
+   Use for multiple user insert
    args:
    {{
      "users": [
@@ -93,42 +67,71 @@ AVAILABLE TOOLS:
    }}
 
 4. delete_user
-   Use for single delete
+   Use for deleting one user
    args:
    {{
      "name": string
    }}
 
 5. delete_users
-   Use for multiple deletes
+   Use for deleting multiple users
    args:
    {{
      "names": [string]
    }}
 
+6. update_user
+   Use for updating a single user
+   args:
+   {{
+     "name": string,
+     "update": {{
+        "name": string (optional),
+        "age": number (optional)
+     }}
+   }}
+
+7. update_users
+   Use for updating multiple users
+   args:
+   {{
+     "names": [string],
+     "update": {{
+        "name": string (optional),
+        "age": number (optional)
+     }}
+   }}
+
 --------------------------------------------------
 RULES:
 
-- If ONE user → use insert_user
-- If MULTIPLE users → use insert_users
-- If DELETE ONE → delete_user
-- If DELETE MANY → delete_users
-- If user says "starting with A/B/C" → use get_users with filter
+- ALWAYS pick correct tool
 - NEVER return empty tool
-- NEVER invent tool names
-- ALWAYS follow schema exactly
-- RETURN ONLY JSON (NO explanation, NO markdown)
+- NEVER invent new tool names
+- ALWAYS follow exact schema
+- ALWAYS return ONLY valid JSON
+- NO explanation, NO markdown
 
 --------------------------------------------------
-FILTERING RULES (IMPORTANT):
+INTELLIGENT MAPPING RULES:
 
-- "names starting with a" → name_starts_with: "a"
-- "starts with b" → "b"
-- "show all users" → no filter
-- "fetch users with name starting with a or b" → run separate logic via prefix (choose closest match)
+INSERT:
+- "add user" → insert_user
+- "add users" → insert_users
+
+DELETE:
+- "delete user" → delete_user
+- "delete users" → delete_users
+
+UPDATE:
+- "update user" → update_user
+- "update users" → update_users
+
+FILTERING:
+- "starting with a/b/c" → get_users with filter.name_starts_with
 
 --------------------------------------------------
-FORMAT:
+OUTPUT FORMAT ONLY:
 
 {{
   "tool": "...",
@@ -140,29 +143,26 @@ USER INPUT:
 {user_input}
 """
 
-# -----------------------------
-# MAIN LOOP
-# -----------------------------
+
 def main():
     tools = get_tools()
 
     while True:
-        user_input = input("\n💬 Ask MCP: ")
+        user_input = input("\n💬 MCP: ")
 
         prompt = build_prompt(user_input, tools)
-        ai_response = ask_llm(prompt)
+        ai = ask_llm(prompt)
 
-        print("\n🤖 AI:", ai_response)
+        print("\n🤖 AI:", ai)
 
-        data = parse_json(ai_response)
-        data = validate_ai(data, tools)
+        data = parse_json(ai)
 
         if not data:
-            print("❌ Invalid AI response")
+            print("❌ Invalid response")
             continue
 
         result = run_tool(data["tool"], data["args"])
-        print("⚡ Result:", result)
+        print("⚡ RESULT:", result)
 
 
 if __name__ == "__main__":

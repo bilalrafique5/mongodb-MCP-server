@@ -13,14 +13,19 @@ def ask_llm(prompt: str):
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "You are a strict MCP tool router. "
-                    "Always return valid JSON only. "
-                    "Never return empty tool. "
-                    "Never invent tool names."
-                )
+                "content": """
+You are a PRODUCTION MCP AGENT.
+
+You MUST:
+- choose correct tool
+- follow schema strictly
+- never output invalid JSON
+- never leave tool empty
+"""
             },
             {"role": "user", "content": prompt}
         ]
     )
     return res.choices[0].message.content
+
+
