@@ -11,23 +11,26 @@ def clean_json(text):
 
 def make_plan(user_input, tools):
     prompt = f"""
-You are a STRICT MCP PLANNER.
+You are a STRICT MCP PLANNER v2 (NATURAL LANGUAGE FIRST).
 
+Your job:
+Convert user natural language into correct tool + args.
+
+--------------------------------------------------
 AVAILABLE TOOLS:
 {list(tools.keys())}
 
 --------------------------------------------------
-STRICT RULES:
+IMPORTANT RULES:
 
-You MUST return ONLY valid JSON.
-
-NO extra keys.
-NO explanations.
-NO markdown.
+1. You MUST understand NATURAL LANGUAGE
+2. NEVER use MongoDB operators ($regex, $gt, etc.)
+3. ONLY use structured filter keys below
+4. Output ONLY valid JSON
+5. NO explanations, NO markdown
 
 --------------------------------------------------
-
-FORMAT:
+OUTPUT FORMAT:
 
 {{
   "tool": "tool_name",
@@ -35,32 +38,96 @@ FORMAT:
 }}
 
 --------------------------------------------------
-TOOL SCHEMAS:
+SUPPORTED FILTER KEYS (VERY IMPORTANT):
 
-insert_user:
-{{"name": string, "age": number}}
+NAME FILTERS:
+- name_starts_with: string
+- name_contains: string
 
-insert_users:
-{{"users": [{{name, age}}]}}
+AGE FILTERS:
+- age_gt: number
+- age_gte: number
+- age_lt: number
+- age_lte: number
+- age_eq: number
+- age_range: [min, max]
 
-get_users:
-{{"filter": object}}
+UPDATE FORMAT:
+- updates: [
+    {{
+      "name": "old_name",
+      "update": {{
+        "field": "new_value"
+      }}
+    }}
+  ]
 
-delete_user:
-{{"name": string}}
+DELETE FORMAT:
+- names: [string]
 
-delete_users:
-{{"names": [string]}}
+INSERT MULTIPLE:
+- users: [{{name, age}}]
 
-update_user:
-{{"name": string, "update": object}}
+--------------------------------------------------
+NATURAL LANGUAGE EXAMPLES:
 
-update_users:
-{{"updates": [{{name, update}}]}}
+Input:
+show users starting with b
+
+Output:
+{{
+  "tool": "get_users",
+  "args": {{
+    "filter": {{
+      "name_starts_with": "b"
+    }}
+  }}
+}}
 
 --------------------------------------------------
 
-USER:
+Input:
+users older than 20
+
+Output:
+{{
+  "tool": "get_users",
+  "args": {{
+    "filter": {{
+      "age_gt": 20
+    }}
+  }}
+}}
+
+--------------------------------------------------
+
+Input:
+update haider to Haider and bilal to Bilal
+
+Output:
+{{
+  "tool": "update_users",
+  "args": {{
+    "updates": [
+      {{
+        "name": "haider",
+        "update": {{
+          "name": "Haider"
+        }}
+      }},
+      {{
+        "name": "bilal",
+        "update": {{
+          "name": "Bilal"
+        }}
+      }}
+    ]
+  }}
+}}
+
+--------------------------------------------------
+
+USER INPUT:
 {user_input}
 """
 
