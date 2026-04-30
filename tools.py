@@ -1,21 +1,30 @@
 from registry import tool
 from db import get_collection
 
-users = get_collection("users")
+users_collection = get_collection("users")
 
 
 # ---------------- INSERT SINGLE ----------------
 @tool("insert_user", "Insert one user")
 def insert_user(name: str, age: int):
-    users.insert_one({"name": name, "age": age})
-    return {"status": "inserted", "name": name}
+    users_collection.insert_one({
+        "name": name,
+        "age": age
+    })
+    return {
+        "status": "inserted",
+        "name": name
+    }
 
 
 # ---------------- INSERT MULTIPLE ----------------
 @tool("insert_users", "Insert multiple users")
-def insert_users(users_list: list):
-    users.insert_many(users_list)
-    return {"status": "bulk_inserted", "count": len(users_list)}
+def insert_users(users: list):
+    users_collection.insert_many(users)
+    return {
+        "status": "bulk_inserted",
+        "count": len(users)
+    }
 
 
 # ---------------- GET WITH FILTERS ----------------
@@ -24,14 +33,12 @@ def get_users(filter: dict = None):
     query = {}
 
     if filter:
-        # name filter
         if "name_starts_with" in filter:
             query["name"] = {
                 "$regex": f"^{filter['name_starts_with']}",
                 "$options": "i"
             }
 
-        # age filters
         if "age_gt" in filter:
             query["age"] = {"$gt": filter["age_gt"]}
 
@@ -53,32 +60,46 @@ def get_users(filter: dict = None):
                 "$lte": filter["age_range"][1]
             }
 
-    return list(users.find(query, {"_id": 0}))
+    return list(users_collection.find(query, {"_id": 0}))
 
 
 # ---------------- DELETE SINGLE ----------------
 @tool("delete_user", "Delete one user")
 def delete_user(name: str):
-    res = users.delete_one({"name": name})
+    res = users_collection.delete_one({"name": name})
     return {"deleted": res.deleted_count}
 
 
 # ---------------- DELETE MULTIPLE ----------------
 @tool("delete_users", "Delete multiple users")
 def delete_users(names: list):
-    res = users.delete_many({"name": {"$in": names}})
+    res = users_collection.delete_many({
+        "name": {"$in": names}
+    })
     return {"deleted": res.deleted_count}
 
 
 # ---------------- UPDATE SINGLE ----------------
 @tool("update_user", "Update one user")
 def update_user(name: str, update: dict):
-    res = users.update_one({"name": name}, {"$set": update})
-    return {"matched": res.matched_count, "updated": res.modified_count}
+    res = users_collection.update_one(
+        {"name": name},
+        {"$set": update}
+    )
+    return {
+        "matched": res.matched_count,
+        "updated": res.modified_count
+    }
 
 
 # ---------------- UPDATE MULTIPLE ----------------
 @tool("update_users", "Update multiple users")
 def update_users(names: list, update: dict):
-    res = users.update_many({"name": {"$in": names}}, {"$set": update})
-    return {"matched": res.matched_count, "updated": res.modified_count}
+    res = users_collection.update_many(
+        {"name": {"$in": names}},
+        {"$set": update}
+    )
+    return {
+        "matched": res.matched_count,
+        "updated": res.modified_count
+    }
