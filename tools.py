@@ -11,23 +11,17 @@ def insert_user(name: str, age: int):
         "name": name,
         "age": age
     })
-    return {
-        "status": "inserted",
-        "name": name
-    }
+    return {"status": "inserted", "name": name}
 
 
 # ---------------- INSERT MULTIPLE ----------------
 @tool("insert_users", "Insert multiple users")
 def insert_users(users: list):
     users_collection.insert_many(users)
-    return {
-        "status": "bulk_inserted",
-        "count": len(users)
-    }
+    return {"status": "bulk_inserted", "count": len(users)}
 
 
-# ---------------- GET WITH FILTERS ----------------
+# ---------------- GET USERS ----------------
 @tool("get_users", "Get users with filters")
 def get_users(filter: dict = None):
     query = {}
@@ -92,14 +86,25 @@ def update_user(name: str, update: dict):
     }
 
 
-# ---------------- UPDATE MULTIPLE ----------------
-@tool("update_users", "Update multiple users")
-def update_users(names: list, update: dict):
-    res = users_collection.update_many(
-        {"name": {"$in": names}},
-        {"$set": update}
-    )
+# ---------------- UPDATE MULTIPLE (NEW DESIGN) ----------------
+@tool("update_users", "Update multiple users individually")
+def update_users(updates: list):
+    """
+    updates = [
+        {"name": "ali", "update": {"name": "Ali"}},
+        {"name": "bilal", "update": {"name": "Bilal"}}
+    ]
+    """
+
+    count = 0
+
+    for item in updates:
+        res = users_collection.update_one(
+            {"name": item["name"]},
+            {"$set": item["update"]}
+        )
+        count += res.modified_count
+
     return {
-        "matched": res.matched_count,
-        "updated": res.modified_count
+        "updated": count
     }

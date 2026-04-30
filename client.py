@@ -14,20 +14,21 @@ def ask_llm(prompt: str):
             {
                 "role": "system",
                 "content": """
-You are an autonomous MCP agent.
+You are a production-grade MCP agent.
 
 Rules:
-- think step by step
-- choose exactly one tool
-- output JSON only
-- never explain outside JSON
+- output ONLY JSON
+- no explanation
+- strictly follow schema
+- if uncertain, still follow schema
 """
             },
             {
                 "role": "user",
                 "content": prompt
             }
-        ]
+        ],
+        temperature=0.1
     )
 
     return response.choices[0].message.content

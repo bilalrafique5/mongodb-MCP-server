@@ -11,22 +11,59 @@ def clean_json(text):
 
 def make_plan(user_input, tools):
     prompt = f"""
-You are an autonomous MCP planner.
+You are a STRICT MCP PLANNER.
 
-Available tools:
+AVAILABLE TOOLS:
 {list(tools.keys())}
 
-Return ONLY JSON:
+--------------------------------------------------
+STRICT RULES:
+
+You MUST return ONLY valid JSON.
+
+NO extra keys.
+NO explanations.
+NO markdown.
+
+--------------------------------------------------
+
+FORMAT:
 
 {{
   "tool": "tool_name",
-  "args": {{}},
-  "reason": "short reason"
+  "args": {{}}
 }}
 
-User:
+--------------------------------------------------
+TOOL SCHEMAS:
+
+insert_user:
+{{"name": string, "age": number}}
+
+insert_users:
+{{"users": [{{name, age}}]}}
+
+get_users:
+{{"filter": object}}
+
+delete_user:
+{{"name": string}}
+
+delete_users:
+{{"names": [string]}}
+
+update_user:
+{{"name": string, "update": object}}
+
+update_users:
+{{"updates": [{{name, update}}]}}
+
+--------------------------------------------------
+
+USER:
 {user_input}
 """
+
     response = ask_llm(prompt)
 
     try:
