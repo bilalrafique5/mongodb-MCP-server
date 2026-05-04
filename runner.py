@@ -32,9 +32,23 @@ def main():
         print("\n🧠 PLAN:", plan)
 
         # STEP 2: execute
+        # STEP 2: execute
         result = run_tool(plan["tool"], plan["args"])
 
+        data = result.get("result", [])
+
         print("\n⚡ RESULT:", result)
+
+        # Display count properly
+        if isinstance(data, list):
+            print(f"📊 Total Records Found: {len(data)}")
+
+            if len(data) > 0:
+                print("📌 Records:")
+                for i, item in enumerate(data, 1):
+                    print(f"{i}. {item}")
+        else:
+            print("📊 Result Type:", type(data).__name__)
 
         # STEP 3: verify
         success = verify_result(result)
