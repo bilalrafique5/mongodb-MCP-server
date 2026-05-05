@@ -4,3 +4,6 @@ pymongo
 python-dotenv
 requests
 groq
+motor
+fastmcp
+requests

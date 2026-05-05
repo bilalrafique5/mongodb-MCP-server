@@ -1,70 +1,125 @@
 from registry import tool
-from db import get_collection
-
-users_collection = get_collection("users")
+from db import get_collection, db
 
 
-def build_query(filter=None):
-    query = {}
+# ---------------- CREATE COLLECTION ----------------
+@tool("create_collection", "Create a new MongoDB collection")
+async def create_collection(name: str):
+    try:
+        await db.create_collection(name)
+        return {"status": "created", "collection": name}
+    except Exception as e:
+        return {"error": str(e)}
 
-    if not filter:
-        return query
 
-    if "name_starts_with" in filter:
-        query["name"] = {
-            "$regex": f"^{filter['name_starts_with']}",
-            "$options": "i"
-        }
+# ---------------- DELETE COLLECTION ----------------
+@tool("delete_collection", "Delete a MongoDB collection")
+async def delete_collection(name: str):
+    try:
+        await db.drop_collection(name)
+        return {"status": "deleted", "collection": name}
+    except Exception as e:
+        return {"error": str(e)}
 
-    if "age_gt" in filter:
-        query["age"] = {"$gt": filter["age_gt"]}
 
-    if "age_gte" in filter:
-        query["age"] = {"$gte": filter["age_gte"]}
-
-    if "age_lt" in filter:
-        query["age"] = {"$lt": filter["age_lt"]}
-
-    if "age_lte" in filter:
-        query["age"] = {"$lte": filter["age_lte"]}
-
-    if "age_eq" in filter:
-        query["age"] = filter["age_eq"]
-
-    if "age_range" in filter:
-        query["age"] = {
-            "$gte": filter["age_range"][0],
-            "$lte": filter["age_range"][1]
-        }
-
-    return query
+# ---------------- LIST COLLECTIONS ----------------
+@tool("list_collections", "List all collections")
+async def list_collections():
+    return await db.list_collection_names()
 
 
 # ---------------- INSERT SINGLE ----------------
-@tool("insert_user", "Insert one user")
-def insert_user(name: str, age: int):
-    users_collection.insert_one({
-        "name": name,
-        "age": age
-    })
-    return {"status": "inserted", "name": name}
+@tool("insert_document", "Insert document into any collection")
+async def insert_document(collection_name: str, data: dict):
+    collection = get_collection(collection_name)
+    await collection.insert_one(data)
 
-
-# ---------------- INSERT MULTIPLE ----------------
-@tool("insert_users", "Insert multiple users")
-def insert_users(users: list):
-    users_collection.insert_many(users)
     return {
-        "status": "bulk_inserted",
-        "count": len(users)
+        "status": "inserted",
+        "collection": collection_name,
+        "data": data
     }
 
 
-# ---------------- GET USERS ----------------
-@tool("get_users", "Get users with filters")
-def get_users(filter: dict = None):
-    query = build_query(filter)
-    users = list(users_collection.find(query, {"_id": 0}))
+# ---------------- INSERT MULTIPLE ----------------
+@tool("insert_documents", "Insert multiple documents")
+async def insert_documents(collection_name: str, documents: list):
+    collection = get_collection(collection_name)
+    await collection.insert_many(documents)
+
+    return {
+        "status": "bulk_inserted",
+        "collection": collection_name,
+        "count": len(documents)
+    }
+
+
+# ---------------- DELETE DOCUMENTS ----------------
+@tool("delete_documents", "Delete documents from any collection")
+async def delete_documents(collection_name: str, filter: dict):
+    collection = get_collection(collection_name)
+    result = await collection.delete_many(filter)
+
+    return {
+        "deleted": result.deleted_count,
+        "collection": collection_name
+    }
+
+
+# ---------------- UPDATE DOCUMENTS ----------------
+@tool("update_documents", "Update documents in any collection")
+async def update_documents(collection_name: str, filter: dict, update: dict):
+    collection = get_collection(collection_name)
+
+    result = await collection.update_many(
+        filter,
+        {"$set": update}
+    )
+
+    return {
+        "matched": result.matched_count,
+        "updated": result.modified_count,
+        "collection": collection_name
+    }
+
+
+# ---------------- FIND DOCUMENTS ----------------
+@tool("find_documents", "Get documents from any collection with filters")
+async def find_documents(collection_name: str, filter: dict = None):
+    collection = get_collection(collection_name)
+
+    query = filter or {}
+
+    docs = await collection.find(query, {"_id": 0}).to_list(length=100)
+
+    return {
+        "collection": collection_name,
+        "count": len(docs),
+        "data": docs
+    }
+
+
+# ---------------- FILTERED USERS (OPTIONAL LEGACY SUPPORT) ----------------
+@tool("get_users", "Backward compatibility user query tool")
+async def get_users(filter: dict = None):
+    collection = get_collection("users")
+
+    query = {}
+
+    if filter:
+        if "name_starts_with" in filter:
+            query["name"] = {
+                "$regex": f"^{filter['name_starts_with']}",
+                "$options": "i"
+            }
+
+        if "age_gt" in filter:
+            query["age"] = {"$gt": filter["age_gt"]}
+
+        if "age_lt" in filter:
+            query["age"] = {"$lt": filter["age_lt"]}
+
+    users = await collection.find(query, {"_id": 0}).to_list(length=100)
 
     return {
         "count": len(users),
@@ -72,70 +127,30 @@ def get_users(filter: dict = None):
     }
 
 
-# ---------------- DELETE SINGLE ----------------
-@tool("delete_user", "Delete one user")
-def delete_user(name: str = None, names: list = None):
-    """
-    Supports both:
-    delete_user(name="Ali")
-    delete_user(names=["Ali"])   # planner mistake tolerance
-    """
-    if names and len(names) > 0:
-        name = names[0]
+# ---------------- COLLECTION SCHEMA ----------------
+@tool("get_collection_schema", "Get schema of any collection")
+async def get_collection_schema(collection_name: str):
+    collection = get_collection(collection_name)
 
-    if not name:
-        return {"error": "name is required"}
+    sample = await collection.find_one()
 
-    res = users_collection.delete_one({"name": name})
-    return {"deleted": res.deleted_count}
+    if not sample:
+        return {
+            "collection": collection_name,
+            "schema": {},
+            "message": "empty collection"
+        }
 
+    schema = {}
 
-# ---------------- DELETE MULTIPLE ----------------
-@tool("delete_users", "Delete multiple users")
-def delete_users(names: list = None, filter: dict = None):
-    """
-    Supports:
-    delete by names
-    delete by filters
-    """
-    if names:
-        res = users_collection.delete_many({
-            "name": {"$in": names}
-        })
-        return {"deleted": res.deleted_count}
-
-    if filter:
-        query = build_query(filter)
-        res = users_collection.delete_many(query)
-        return {"deleted": res.deleted_count}
-
-    return {"error": "Provide names or filter"}
-
-
-# ---------------- UPDATE SINGLE ----------------
-@tool("update_user", "Update one user")
-def update_user(name: str, update: dict):
-    res = users_collection.update_one(
-        {"name": name},
-        {"$set": update}
-    )
+    for k, v in sample.items():
+        if k != "_id":
+            schema[k] = {
+                "type": type(v).__name__,
+                "example": v
+            }
 
     return {
-        "matched": res.matched_count,
-        "updated": res.modified_count
+        "collection": collection_name,
+        "schema": schema
     }
-
-
-# ---------------- UPDATE MULTIPLE ----------------
-@tool("update_users", "Update multiple users")
-def update_users(updates: list):
-    count = 0
-
-    for item in updates:
-        res = users_collection.update_one(
-            {"name": item["name"]},
-            {"$set": item["update"]}
-        )
-        count += res.modified_count
-
-    return {"updated": count}

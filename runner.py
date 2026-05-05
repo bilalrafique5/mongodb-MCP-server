@@ -19,44 +19,31 @@ def run_tool(tool, args):
 def main():
     tools = get_tools()
 
-    while True:
-        user_input = input("\n💬 MCP Agent: ")
+    print("\n🤖 MCP NLP Agent Ready (type natural language)\n")
 
-        # STEP 1: plan
+    while True:
+        user_input = input("💬 You: ")
+
+        # NLP → Tool Plan
         plan = make_plan(user_input, tools)
 
         if not plan:
-            print("❌ Planning failed")
+            print("❌ Could not understand query")
             continue
 
-        print("\n🧠 PLAN:", plan)
+        print("\n🧠 Tool Selected:", plan["tool"])
+        print("⚙️ Args:", plan.get("args", {}))
 
-        # STEP 2: execute
-        # STEP 2: execute
-        result = run_tool(plan["tool"], plan["args"])
+        # Execute
+        result = run_tool(plan["tool"], plan.get("args", {}))
 
-        data = result.get("result", [])
+        print("\n⚡ Result:", result)
 
-        print("\n⚡ RESULT:", result)
-
-        # Display count properly
-        if isinstance(data, list):
-            print(f"📊 Total Records Found: {len(data)}")
-
-            if len(data) > 0:
-                print("📌 Records:")
-                for i, item in enumerate(data, 1):
-                    print(f"{i}. {item}")
+        if verify_result(result):
+            print("✅ Success")
         else:
-            print("📊 Result Type:", type(data).__name__)
+            print("❌ Failed")
 
-        # STEP 3: verify
-        success = verify_result(result)
 
-        if success:
-            print("✅ Task completed successfully")
-        else:
-            print("❌ Task failed")
-            
 if __name__ == "__main__":
     main()

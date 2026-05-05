@@ -1,14 +1,14 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from registry import get_tools, execute_tool
-import tools  # IMPORTANT (register tools)
+import tools  # registers tools
 
-app = FastAPI(title="Production MCP Server")
+app = FastAPI(title="MongoDB MCP Server")
 
 
 class ToolCall(BaseModel):
     tool: str
-    args: dict
+    args: dict = {}
 
 
 @app.get("/tools")
@@ -17,5 +17,6 @@ def tools_list():
 
 
 @app.post("/run")
-def run(call: ToolCall):
-    return {"result": execute_tool(call.tool, call.args)}
+async def run(call: ToolCall):
+    result = await execute_tool(call.tool, call.args)
+    return {"result": result}
