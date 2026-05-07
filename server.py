@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from registry import get_tools, execute_tool
-import tools  # registers tools
+import tools
 
-app = FastAPI(title="MongoDB MCP Server")
+app = FastAPI(title="MCP MongoDB Server")
 
 
 class ToolCall(BaseModel):
@@ -18,5 +18,8 @@ def tools_list():
 
 @app.post("/run")
 async def run(call: ToolCall):
-    result = await execute_tool(call.tool, call.args)
-    return {"result": result}
+    try:
+        result = await execute_tool(call.tool, call.args)
+        return {"result": result}
+    except Exception as e:
+        return {"result": {"error": str(e)}}

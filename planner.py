@@ -1,54 +1,69 @@
-import json
 from llm import ask_llm
+
 
 def make_plan(user_input, tools):
     prompt = f"""
-You are a STRICT MCP TOOL ROUTER.
+You are a STRICT NLP TOOL ROUTER.
 
-CRITICAL RULE:
-❌ NEVER use MongoDB operators like $gt, $lt, $regex
-✅ ONLY use DSL filters below
+Your job:
+- Understand user intent
+- Pick correct tool
+- Extract entities properly
+- Return ONLY valid JSON
 
-SUPPORTED FILTER DSL:
+AVAILABLE TOOLS:
+{tools}
 
-age_gt → number
-age_lt → number
-age_eq → number
-name_starts_with → string
-
-RULE:
-Convert natural language into DSL ONLY.
-
-TOOLS:
-{list(tools.keys())}
+IMPORTANT RULES:
+- NEVER use MongoDB syntax
+- ONLY choose from given tools
+- args must always be a dictionary
+- if no args → use {{}}
 
 OUTPUT FORMAT:
 {{
-  "tool": "get_users",
+  "tool": "tool_name",
+  "args": {{}}
+}}
+
+--------------------------------------------------
+
+EXAMPLES:
+
+Input: show all collections
+Output:
+{{"tool": "list_collections", "args": {{}}}}
+
+Input: create students collection
+Output:
+{{"tool": "create_collection", "args": {{"name": "students"}}}}
+
+Input: delete students collection
+Output:
+{{"tool": "delete_collection", "args": {{"name": "students"}}}}
+
+Input: add haider age 20 in users
+Output:
+{{
+  "tool": "insert_document",
   "args": {{
-    "filter": {{
-      "age_gt": 24
+    "collection_name": "users",
+    "data": {{
+      "name": "haider",
+      "age": 20
     }}
   }}
 }}
 
-EXAMPLES:
+--------------------------------------------------
 
-Input: users older than 24
-Output:
-{{"tool": "get_users", "args": {{"filter": {{"age_gt": 24}}}}}}
-
-Input: fetch all persons with age greater than 24
-Output:
-{{"tool": "get_users", "args": {{"filter": {{"age_gt": 24}}}}}}
-
-NOW:
+USER INPUT:
 {user_input}
 """
 
     response = ask_llm(prompt)
 
     try:
-        return json.loads(response)
+        return response  # already JSON from LLM
     except:
         return None

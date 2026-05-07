@@ -7,5 +7,6 @@ load_dotenv()
 client = AsyncIOMotorClient(os.getenv("MONGO_URI"))
 db = client[os.getenv("DB_NAME")]
 
+
 def get_collection(name: str):
     return db[name]

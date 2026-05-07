@@ -1,4 +1,7 @@
+import inspect
+
 TOOLS = {}
+
 
 def tool(name: str, description: str):
     def wrapper(func):
@@ -10,10 +13,15 @@ def tool(name: str, description: str):
     return wrapper
 
 
+# ---------------- TOOLS INFO (for LLM) ----------------
 def get_tools():
-    return {k: v["description"] for k, v in TOOLS.items()}
+    return {
+        name: meta["description"]
+        for name, meta in TOOLS.items()
+    }
 
 
+# ---------------- EXECUTOR (ASYNC SAFE) ----------------
 async def execute_tool(name, args):
     if name not in TOOLS:
         return {"error": "Tool not found"}
@@ -21,16 +29,19 @@ async def execute_tool(name, args):
     func = TOOLS[name]["func"]
 
     try:
-        # FORCE correct argument mapping safety
-        import inspect
+        # clean args filtering
         sig = inspect.signature(func)
 
         filtered_args = {
-            k: v for k, v in args.items()
+            k: v for k, v in (args or {}).items()
             if k in sig.parameters
         }
 
-        return await func(**filtered_args)
+        # async support
+        if inspect.iscoroutinefunction(func):
+            return await func(**filtered_args)
+
+        return func(**filtered_args)
 
     except Exception as e:
         return {"error": str(e)}

@@ -1,6 +1,7 @@
 from groq import Groq
 from dotenv import load_dotenv
 import os
+import json
 
 load_dotenv()
 
@@ -13,10 +14,17 @@ def ask_llm(prompt: str):
         messages=[
             {
                 "role": "system",
-                "content": "You are a strict JSON generator. Output ONLY valid JSON."
+                "content": "Return ONLY valid JSON. No text, no explanation."
             },
             {"role": "user", "content": prompt}
         ],
         temperature=0
     )
-    return res.choices[0].message.content.strip()
+
+    content = res.choices[0].message.content.strip()
+
+    # 🔥 SAFE JSON CLEAN
+    try:
+        return json.loads(content)
+    except:
+        return None
