@@ -8,13 +8,21 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
-def ask_llm(prompt: str):
+def ask_llm(prompt: str, return_json: bool = True):
     res = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
             {
                 "role": "system",
-                "content": "Return ONLY valid JSON. No text, no explanation."
+                "content": """
+You are an AI that converts natural language into structured JSON tool calls or provides helpful responses.
+
+RULES:
+- Output ONLY JSON (if JSON requested)
+- No explanation unless asked
+- No markdown unless asked
+- Always follow tool schema
+"""
             },
             {"role": "user", "content": prompt}
         ],
@@ -23,8 +31,17 @@ def ask_llm(prompt: str):
 
     content = res.choices[0].message.content.strip()
 
-    # 🔥 SAFE JSON CLEAN
-    try:
-        return json.loads(content)
-    except:
-        return None
+    if return_json:
+        try:
+            # Try to extract JSON if wrapped in markdown
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+                content = content.strip()
+            
+            return json.loads(content)
+        except:
+            return {"error": "Could not parse response"}
+    else:
+        return content

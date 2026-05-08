@@ -1,51 +1,39 @@
-import requests
+import asyncio
 from planner import make_plan
-
-MCP_URL = "http://127.0.0.1:8000"
-
-
-def get_tools():
-    return requests.get(f"{MCP_URL}/tools").json()
+from tool_registry import TOOLS
 
 
-def run_tool(tool, args):
-    try:
-        res = requests.post(
-            f"{MCP_URL}/run",
-            json={"tool": tool, "args": args},
-            timeout=10
-        )
+async def run_tool(tool_name, args):
+    if tool_name not in TOOLS:
+        return {"error": "Tool not found"}
 
-        try:
-            return res.json()
-        except:
-            return {"result": {"error": res.text}}
-
-    except Exception as e:
-        return {"result": {"error": str(e)}}
+    return await TOOLS[tool_name](**args)
 
 
-def main():
-    tools = get_tools()
-
-    print("\n🤖 MCP NLP Agent Ready\n")
+async def main():
+    print("\n🚀 NLP MCP READY")
+    print("Type 'exit' to quit\n")
 
     while True:
         user_input = input("💬 You: ")
 
-        plan = make_plan(user_input, tools)
+        if user_input.lower() == "exit":
+            break
+
+        plan = make_plan(user_input, TOOLS)
 
         if not plan:
             print("❌ Could not understand")
             continue
 
         print("\n🧠 Tool:", plan["tool"])
-        print("⚙️ Args:", plan.get("args", {}))
+        print("⚙️ Args:", plan["args"])
 
-        result = run_tool(plan["tool"], plan.get("args", {}))
+        result = await run_tool(plan["tool"], plan["args"])
 
         print("\n⚡ Result:", result)
+        print("-" * 50)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
